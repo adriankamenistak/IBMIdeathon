@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>APEX HARDWARE // Heavy Computing & Custom Rig Architecture</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        mono: ['"JetBrains Mono"', '"Fira Code"', 'ui-monospace', 'monospace'],
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    colors: {
+                        apex: {
+                            bg: '#0c0d0e',
+                            panel: '#141619',
+                            card: '#1a1d21',
+                            border: '#2a2f35',
+                            borderLight: '#3a4149',
+                            accent: '#00ff66', // Electric green
+                            accentHover: '#00cc52',
+                            warning: '#ff9900', // Amber/Orange
+                            text: '#e1e4e8',
+                            muted: '#8b949e',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #0c0d0e;
+            color: #e1e4e8;
+            font-family: 'Inter', sans-serif;
+            background-image: 
+                radial-gradient(rgba(42, 47, 53, 0.4) 1px, transparent 0);
+            background-size: 24px 24px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Industrial Grid lines */
+        .grid-line-pattern {
+            background-image: linear-gradient(to right, #1a1d21 1px, transparent 1px),
+                              linear-gradient(to bottom, #1a1d21 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        /* Custom tactile scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0c0d0e;
+            border-left: 1px solid #2a2f35;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #2a2f35;
+            border-radius: 0px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #00ff66;
+        }
+
+        .scanline {
+            background: linear-gradient(
+                to bottom,
+                rgba(255,255,255,0),
+                rgba(255,255,255,0) 50%,
+                rgba(0, 0, 0, 0.3) 50%,
+                rgba(0, 0, 0, 0.3)
+            );
+            background-size: 100% 4px;
+        }
+
+        /* Terminal LED dot */
+        .led-active {
+            box-shadow: 0 0 8px #00ff66;
+        }
+
+        .industrial-card {
+            background: #141619;
+            border: 1px solid #2a2f35;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .industrial-card:hover {
+            border-color: #00ff66;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 12px rgba(0, 255, 102, 0.1);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-apex-accent selection:text-black">
+
+    <!-- TOP TACTICAL HEADER -->
+    <header class="sticky top-0 z-40 w-full bg-apex-bg/95 backdrop-blur-md border-b border-apex-border">
+        <!-- Status Bar Banner -->
+        <div class="bg-apex-panel px-4 py-1 border-b border-apex-border text-[11px] font-mono flex items-center justify-between text-apex-muted">
+            <div class="flex items-center space-x-3">
+                <span class="flex items-center space-x-1.5 text-apex-accent">
+                    <span class="w-2 h-2 rounded-full bg-apex-accent led-active inline-block"></span>
+                    <span class="font-bold tracking-wider">SYS_STATUS: ONLINE</span>
+                </span>
+                <span class="hidden md:inline text-apex-border">|</span>
+                <span class="hidden md:inline">NODE: US-EAST-ECOM-01</span>
+                <span class="hidden md:inline text-apex-border">|</span>
+                <span class="hidden md:inline text-apex-muted">ENCRYPTION: AES-256-GCM</span>
+            </div>
+            <div class="flex items-center space-x-4">
+                <span>STOCK_UPDATE: <span class="text-white">LIVE</span></span>
+                <span class="text-apex-border">|</span>
+                <a href="#benchmark-info" class="hover:text-apex-accent transition">BENCHMARK_SUITE_v4.2</a>
+            </div>
+        </div>
+
+        <!-- Main Nav Controls -->
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+            
+            <!-- Brand Logo -->
+            <a href="#" class="flex items-center space-x-3 group shrink-0">
+                <div class="w-9 h-9 bg-apex-panel border border-apex-border flex items-center justify-center group-hover:border-apex-accent transition duration-200">
+                    <svg class="w-5 h-5 text-apex-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="font-mono font-bold text-base tracking-wider text-white flex items-center gap-1.5">
+                        APEX<span class="text-apex-accent">//</span>HARDWARE
+                    </div>
+                    <div class="text-[10px] font-mono text-apex-muted tracking-widest uppercase">Custom Computing Systems</div>
+                </div>
+            </a>
+
+            <!-- Search Input -->
+            <div class="flex-1 max-w-md mx-2 sm:mx-6">
+                <div class="relative">
+                    <input type="text" 
+                           id="searchInput" 
+                           oninput="handleSearch(this.value)" 
+                           placeholder="Search specs, components, Xeon, RTX, EPYC..." 
+                           class="w-full bg-apex-panel border border-apex-border rounded-none px-4 py-2 pl-10 text-xs font-mono text-white placeholder-apex-muted focus:outline-none focus:border-apex-accent transition">
+                    <svg class="w-4 h-4 text-apex-muted absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                    <span id="clearSearch" onclick="clearSearchInput()" class="hidden absolute right-3 top-2.5 text-xs text-apex-muted hover:text-apex-accent cursor-pointer font-mono">[ESC]</span>
+                </div>
+            </div>
+
+            <!-- Cart Trigger Button -->
+            <div class="flex items-center space-x-3 shrink-0">
+                <button onclick="toggleCartDrawer()" class="relative bg-apex-panel border border-apex-border hover:border-apex-accent text-white px-3 sm:px-4 py-2 font-mono text-xs flex items-center space-x-2.5 transition active:scale-95">
+                    <svg class="w-4 h-4 text-apex-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z"></path>
+                    </svg>
+                    <span class="hidden sm:inline font-semibold">CART_MANIFEST</span>
+                    <span id="cartBadge" class="bg-apex-accent text-black font-bold px-1.5 py-0.5 text-[10px] min-w-[20px] text-center">0</span>
+                </button>
+            </div>
+
+        </div>
+    </header>
+
+    <main class="w-full flex-grow">
+
+        <!-- INDUSTRIAL HERO BANNER -->
+        <section class="border-b border-apex-border bg-apex-panel relative overflow-hidden">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 py-12 lg:py-16 relative z-10">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                    
+                    <div class="lg:col-span-7 space-y-6">
+                        <div class="inline-flex items-center space-x-2 bg-apex-bg border border-apex-border px-3 py-1 font-mono text-xs">
+                            <span class="w-2 h-2 bg-apex-warning rounded-full animate-pulse"></span>
+                            <span class="text-apex-warning font-semibold">INDUSTRIAL_GRADE ARCHITECTURE</span>
+                        </div>
+                        
+                        <h1 class="text-3xl sm:text-5xl font-mono font-bold text-white tracking-tight leading-tight">
+                            ENGINEERED FOR <span class="text-apex-accent underline decoration-2 underline-offset-8">MAXIMUM</span> THERMAL & COMPUTE DENSITY.
+                        </h1>
+
+                        <p class="text-sm sm:text-base text-apex-muted font-sans leading-relaxed max-w-2xl">
+                            High-reliability custom servers, workstation rigs, dev laptops, and microcontroller evaluation boards built for deep learning pipelines, CAD modeling, and continuous heavy-duty compute.
+                        </p>
+
+                        <!-- Tech Quick Badges -->
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono text-xs pt-2">
+                            <div class="p-2.5 bg-apex-bg border border-apex-border">
+                                <span class="block text-apex-muted text-[10px]">ECC MEMORY</span>
+                                <span class="font-bold text-white">UP TO 2TB REG</span>
+                            </div>
+                            <div class="p-2.5 bg-apex-bg border border-apex-border">
+                                <span class="block text-apex-muted text-[10px]">PCIe GEN 5</span>
+                                <span class="font-bold text-white">128 LANES</span>
+                            </div>
+                            <div class="p-2.5 bg-apex-bg border border-apex-border">
+                                <span class="block text-apex-muted text-[10px]">OS PRE-INSTALLED</span>
+                                <span class="font-bold text-apex-accent">NixOS / Ubuntu</span>
+                            </div>
+                            <div class="p-2.5 bg-apex-bg border border-apex-border">
+                                <span class="block text-apex-muted text-[10px]">TESTING</span>
+                                <span class="font-bold text-white">72H BURN-IN</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Visual Accent Card -->
+                    <div class="lg:col-span-5 bg-apex-bg border border-apex-border p-5 font-mono text-xs relative space-y-4">
+                        <div class="flex items-center justify-between border-b border-apex-border pb-3">
+                            <span class="text-apex-accent font-bold">// SYSTEM CONFIGURATOR METRICS</span>
+                            <span class="text-[10px] text-apex-muted">VERIFIED_HARDWARE</span>
+                        </div>
+                        <div class="space-y-2 text-apex-muted">
+                            <div class="flex justify-between">
+                                <span>RACK_COMPATIBILITY:</span>
+                                <span class="text-white font-medium">1U / 2U / 4U ATX</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>POWER_EFFICIENCY:</span>
+                                <span class="text-white font-medium">80 PLUS TITANIUM</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>THERMAL_TESTING:</span>
+                                <span class="text-white font-medium">PASS (Delta T < 14°C)</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>GLOBAL_DISPATCH:</span>
+                                <span class="text-apex-accent font-medium">IN STOCK (24h Ship)</span>
+                            </div>
+                        </div>
+                        <div class="p-3 bg-apex-panel border border-apex-border border-l-2 border-l-apex-accent">
+                            <span class="block text-[10px] text-apex-muted">FEATURED HARDWARE RIG:</span>
+                            <span class="text-white font-bold">THREADRIPPER PRO 7995WX // 96-CORE WORKSTATION</span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- FILTER BAR & CATEGORY SELECTOR -->
+        <section id="catalog" class="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-6">
+            <div class="flex flex-col md:flex-row md:items-center justify-between border-b border-apex-border pb-6 gap-4">
+                <div>
+                    <h2 class="text-xl sm:text-2xl font-mono font-bold text-white tracking-wide flex items-center gap-2">
+                        <span class="text-apex-accent">01.</span> SYSTEM CATALOG
+                    </h2>
+                    <p class="text-xs text-apex-muted font-mono mt-1">SELECT CATEGORY TO FILTER HARDWARE SPECS</p>
+                </div>
+
+                <!-- Category Buttons -->
+                <div class="flex items-center space-x-2 overflow-x-auto pb-2 md:pb-0 font-mono text-xs custom-scrollbar" id="categoryButtons">
+                    <!-- Dynamic rendering -->
+                </div>
+            </div>
+        </section>
+
+        <!-- PRODUCT GRID -->
+        <section class="max-w-7xl mx-auto px-4 sm:px-6 pb-20">
+            <div id="productGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Dynamically generated hardware cards -->
+            </div>
+            
+            <div id="emptySearchState" class="hidden text-center py-20 bg-apex-panel border border-apex-border font-mono">
+                <svg class="w-12 h-12 text-apex-muted mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 9.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <h3 class="text-lg font-bold text-white">NO_HARDWARE_MATCHES_FOUND</h3>
+                <p class="text-xs text-apex-muted mt-1">Try modifying your query or category filters.</p>
+                <button onclick="resetFilters()" class="mt-4 px-4 py-2 bg-apex-border text-white text-xs hover:bg-apex-accent hover:text-black transition">RESET_QUERY</button>
+            </div>
+        </section>
+
+        <section id="benchmark-info" class="border-t border-apex-border bg-apex-panel py-12 px-4 sm:px-6">
+            <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 font-mono text-xs">
+                <div class="p-5 bg-apex-bg border border-apex-border space-y-2">
+                    <div class="text-apex-accent font-bold text-sm">// 01. HARDWARE TESTING</div>
+                    <p class="text-apex-muted leading-relaxed">Each unit undergoes a mandatory 72-hour stress test using Prime95, FurMark, and memtest86 prior to dispatch.</p>
+                </div>
+                <div class="p-5 bg-apex-bg border border-apex-border space-y-2">
+                    <div class="text-apex-warning font-bold text-sm">// 02. OS ENVIRONMENT</div>
+                    <p class="text-apex-muted leading-relaxed">Choose pre-configured Linux kernel setups (NixOS, Arch, Ubuntu LTS, Debian) with CUDA/ROCm acceleration pre-loaded.</p>
+                </div>
+                <div class="p-5 bg-apex-bg border border-apex-border space-y-2">
+                    <div class="text-apex-accent font-bold text-sm">// 03. ENTERPRISE SUPPORT</div>
+                    <p class="text-apex-muted leading-relaxed">Direct hardware replacement SLA with redundant power supply options and IPMI remote management capabilities.</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-apex-bg border-t border-apex-border py-8 text-xs font-mono text-apex-muted">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <span class="text-white font-bold">APEX HARDWARE LOGISTICS INC.</span> — Industrial Hardware Engineering
+            </div>
+            <div class="flex space-x-6">
+                <a href="#" class="hover:text-apex-accent transition">SYS_DOCS</a>
+                <a href="#" class="hover:text-apex-accent transition">SECURITY_POLICY</a>
+                <a href="#" class="hover:text-apex-accent transition">HARDWARE_SLA</a>
+                <a href="#" class="hover:text-apex-accent transition">CONTACT_ENGINEERING</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- SLIDE-OVER SHOPPING CART DRAWER -->
+    <div id="cartOverlay" onclick="toggleCartDrawer()" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 opacity-0 pointer-events-none transition-opacity duration-300"></div>
+
+    <div id="cartDrawer" class="fixed top-0 right-0 bottom-0 w-full max-w-md bg-apex-panel border-l border-apex-border z-50 transform translate-x-full transition-transform duration-300 flex flex-col justify-between shadow-2xl font-mono">
+        <!-- Drawer Header -->
+        <div class="p-5 border-b border-apex-border flex items-center justify-between bg-apex-bg">
+            <div class="flex items-center space-x-2">
+                <span class="w-2.5 h-2.5 bg-apex-accent rounded-full inline-block"></span>
+                <h3 class="text-sm font-bold text-white tracking-wider">CART_MANIFEST // SYSTEM ORDER</h3>
+            </div>
+            <button onclick="toggleCartDrawer()" class="text-apex-muted hover:text-white text-xs border border-apex-border px-2 py-1 hover:border-apex-accent transition">
+                [ESC]
+            </button>
+        </div>
+
+        <!-- Items Listing -->
+        <div id="cartItemsContainer" class="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">
+            <!-- Dynamic Content -->
+        </div>
+
+        <!-- Drawer Footer with Tax and Totals -->
+        <div class="p-5 border-t border-apex-border bg-apex-bg space-y-4">
+            <div class="space-y-2 text-xs">
+                <div class="flex justify-between text-apex-muted">
+                    <span>HARDWARE SUBTOTAL</span>
+                    <span id="cartSubtotal" class="text-white font-bold">$0.00</span>
+                </div>
+                <div class="flex justify-between text-apex-muted">
+                    <span>ESTIMATED TAX (8.5%)</span>
+                    <span id="cartTax" class="text-white">$0.00</span>
+                </div>
+                <div class="flex justify-between text-apex-muted">
+                    <span>FREIGHT / LOGISTICS</span>
+                    <span class="text-apex-accent font-bold">FREE_EXPEDITED</span>
+                </div>
+                <div class="flex justify-between text-sm font-bold text-white pt-2 border-t border-apex-border">
+                    <span class="text-apex-accent">FINAL TOTAL</span>
+                    <span id="cartTotal" class="text-apex-accent">$0.00</span>
+                </div>
+            </div>
+
+            <!-- Checkout Action Button -->
+            <button onclick="simulateCheckout()" class="w-full py-3 bg-apex-accent hover:bg-apex-accentHover text-black font-bold text-xs uppercase tracking-wider transition active:scale-95 flex items-center justify-center space-x-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                <span>INITIATE_PROCUREMENT_ORDER</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- QUICK SPECS MODAL -->
+    <div id="specsModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-apex-panel border border-apex-border max-w-2xl w-full p-6 sm:p-8 relative max-h-[90vh] overflow-y-auto custom-scrollbar shadow-2xl font-mono text-xs">
+            <button onclick="closeSpecsModal()" class="absolute top-5 right-5 text-apex-muted hover:text-apex-accent text-sm border border-apex-border px-2 py-1">
+                [CLOSE]
+            </button>
+            <div id="specsModalContent">
+                <!-- Dynamic Content -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // HARDWARE INVENTORY DATASET
+        const products = [
+            {
+                id: "RIG-9901",
+                title: "APEX THREADRIPPER PRO 7995WX RIG",
+                category: "Workstations",
+                price: 11499,
+                badge: "96 CORES / 192 THREADS",
+                image: "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?auto=format&fit=crop&w=800&q=80",
+                cpu: "AMD Threadripper PRO 7995WX",
+                ram: "256GB ECC DDR5-5600",
+                storage: "4TB NVMe PCIe 5.0 SSD",
+                tdp: "350W TDP",
+                osChoices: ["NixOS 23.11", "Ubuntu 24.04 LTS", "Debian 12"],
+                benchmarkScore: "112,450 pts (Geekbench 6 Multi)",
+                ioPorts: "2x 10GbE LAN, 6x USB 3.2 Gen2x2, 2x Thunderbolt 4",
+                thermals: "Custom Dual-Loop Liquid Cooling, 360mm Radiator",
+                description: "Built for massive parallel compilation, AI model fine-tuning, and heavy VFX rendering pipelines."
+            },
+            {
+                id: "SRV-2204",
+                title: "HYPERION 2U DUAL EPYC SERVER",
+                category: "Rack Servers",
+                price: 8750,
+                badge: "128 CORES RACK",
+                image: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=800&q=80",
+                cpu: "Dual AMD EPYC 9554 (128 Cores)",
+                ram: "512GB ECC DDR5 Registered",
+                storage: "8x 3.84TB U.2 NVMe Hot-Swap",
+                tdp: "800W Redundant PSU",
+                osChoices: ["Proxmox VE 8.1", "Ubuntu Server 24.04", "RHEL 9.3"],
+                benchmarkScore: "Top tier IOPS (1.2M random read)",
+                ioPorts: "4x 25GbE SFP28 Ports, IPMI 2.0 Dedicated NIC",
+                thermals: "High-RPM Counter-Rotating Server Fans",
+                description: "Enterprise high-density virtualization server configured for maximum NVMe throughput."
+            },
+            {
+                id: "DEV-1080",
+                title: "TUF-ENGINEER DEV LAPTOP 16",
+                category: "Dev Laptops",
+                price: 3299,
+                badge: "RTX 4090 MOBILE",
+                image: "https://images.unsplash.com/photo-1541807084-5c52b6b3adef?auto=format&fit=crop&w=800&q=80",
+                cpu: "Intel Core i9-14900HX",
+                ram: "64GB DDR5-5600",
+                storage: "2TB NVMe SSD",
+                tdp: "175W Max GPU Power",
+                osChoices: ["NixOS (Hyprland Preconfigured)", "Arch Linux", "Ubuntu Desktop"],
+                benchmarkScore: "21,500 pts (Time Spy)",
+                ioPorts: "HDMI 2.1, Thunderbolt 4, SD Express 8.0 Reader",
+                thermals: "Vapor Chamber Liquid Metal Compound",
+                description: "Mobile workstation tuned for kernel developers, machine learning practitioners, and CAD engineering."
+            },
+            {
+                id: "GPU-4090",
+                title: "NVIDIA RTX 6000 ADA GENERATION",
+                category: "Custom Components",
+                price: 6800,
+                badge: "48GB VRAM ECC",
+                image: "https://images.unsplash.com/photo-1591488320449-011701bb6704?auto=format&fit=crop&w=800&q=80",
+                cpu: "18,176 CUDA Cores",
+                ram: "48GB GDDR6 with ECC",
+                storage: "PCIe 4.0 x16 Interface",
+                tdp: "300W Max Consumption",
+                osChoices: ["CUDA 12.3 Driver Suite", "ROCm Bridge"],
+                benchmarkScore: "91.1 TFLOPS FP32 Compute",
+                ioPorts: "4x DisplayPort 1.4a",
+                thermals: "Blower-Style Fan for Multi-GPU Enclosures",
+                description: "The ultimate workstation graphics card for generative AI, large language models, and 3D simulation."
+            },
+            {
+                id: "MCU-3200",
+                title: "RISC-V EVALUATION DEV BOARD",
+                category: "Microcontrollers",
+                price: 349,
+                badge: "QUAD RISC-V 1.5GHz",
+                image: "https://images.unsplash.com/photo-1608564697071-ddf911d81370?auto=format&fit=crop&w=800&q=80",
+                cpu: "SiFive Freedom U74 Quad-Core",
+                ram: "16GB LPDDR4",
+                storage: "MicroSD + M.2 NVMe Slot",
+                tdp: "15W Low-Power Passively Cooled",
+                osChoices: ["Debian RISC-V Port", "Yocto Embedded Linux"],
+                benchmarkScore: "Open-Source Instruction Set Platform",
+                ioPorts: "Gigabit LAN, 40-Pin GPIO Header, MIPI-CSI",
+                thermals: "Anodized Aluminum Heat Sink",
+                description: "Native hardware testing platform for embedded developers and open-architecture firmware research."
+            },
+            {
+                id: "RIG-5500",
+                title: "APEX COMPACT RACK STATION 4U",
+                category: "Workstations",
+                price: 4599,
+                badge: "THREADRIPPER 7960X",
+                image: "https://images.unsplash.com/photo-1525547719571-a2d4ac8945e2?auto=format&fit=crop&w=800&q=80",
+                cpu: "AMD Threadripper 7960X (24 Cores)",
+                ram: "128GB ECC DDR5",
+                storage: "2TB NVMe PCIe 4.0",
+                tdp: "350W TDP System",
+                osChoices: ["Ubuntu 24.04 LTS", "NixOS", "Fedora Workstation"],
+                benchmarkScore: "42,100 pts (Geekbench 6 Multi)",
+                ioPorts: "Dual 2.5GbE, USB-C 20Gbps",
+                thermals: "Noctua Industrial PWM Thermal System",
+                description: "Compact 4U form factor designed for audio engineering, CAD modeling, and industrial automation control."
+            }
+        ];
+
+        const categories = ["ALL_HARDWARE", "Workstations", "Rack Servers", "Dev Laptops", "Custom Components", "Microcontrollers"];
+        let activeCategory = "ALL_HARDWARE";
+        let searchQuery = "";
+        let shoppingCart = [];
+
+        // INITIALIZATION
+        document.addEventListener("DOMContentLoaded", () => {
+            renderCategories();
+            renderProducts();
+            updateCartUI();
+
+            // Keyboard shortcut listener for Esc key
+            document.addEventListener("keydown", (e) => {
+                if (e.key === "Escape") {
+                    closeSpecsModal();
+                    const cartDrawer = document.getElementById("cartDrawer");
+                    if (!cartDrawer.classList.contains("translate-x-full")) {
+                        toggleCartDrawer();
+                    }
+                }
+            });
+        });
+
+        // CATEGORY BUTTONS RENDER
+        function renderCategories() {
+            const container = document.getElementById("categoryButtons");
+            container.innerHTML = categories.map(cat => `
+                <button onclick="selectCategory('${cat}')" 
+                        class="px-3 py-1.5 transition font-semibold text-xs whitespace-nowrap ${activeCategory === cat ? 'bg-apex-accent text-black border border-apex-accent' : 'bg-apex-bg text-apex-muted border border-apex-border hover:border-apex-accent hover:text-white'}">
+                    ${cat.toUpperCase()}
+                </button>
+            `).join('');
+        }
+
+        function selectCategory(cat) {
+            activeCategory = cat;
+            renderCategories();
+            renderProducts();
+        }
+
+        function handleSearch(val) {
+            searchQuery = val.toLowerCase().trim();
+            const clearBtn = document.getElementById("clearSearch");
+            if (searchQuery.length > 0) {
+                clearBtn.classList.remove("hidden");
+            } else {
+                clearBtn.classList.add("hidden");
+            }
+            renderProducts();
+        }
+
+        function clearSearchInput() {
+            document.getElementById("searchInput").value = "";
+            handleSearch("");
+        }
+
+        function resetFilters() {
+            activeCategory = "ALL_HARDWARE";
+            clearSearchInput();
+            renderCategories();
+        }
+
+        // RENDER PRODUCTS GRID
+        function renderProducts() {
+            const grid = document.getElementById("productGrid");
+            const emptyState = document.getElementById("emptySearchState");
+
+            const filtered = products.filter(p => {
+                const matchesCat = activeCategory === "ALL_HARDWARE" || p.category === activeCategory;
+                const matchesSearch = searchQuery === "" || 
+                    p.title.toLowerCase().includes(searchQuery) || 
+                    p.cpu.toLowerCase().includes(searchQuery) ||
+                    p.badge.toLowerCase().includes(searchQuery) ||
+                    p.category.toLowerCase().includes(searchQuery);
+                return matchesCat && matchesSearch;
+            });
+
+            if (filtered.length === 0) {
+                grid.innerHTML = "";
+                emptyState.classList.remove("hidden");
+                return;
+            }
+
+            emptyState.classList.add("hidden");
+
+            grid.innerHTML = filtered.map(item => `
+                <div class="industrial-card p-5 flex flex-col justify-between font-mono relative group">
+                    <div>
+                        <!-- Category Header Badge -->
+                        <div class="flex items-center justify-between text-[10px] text-apex-muted border-b border-apex-border pb-2.5 mb-4">
+                            <span class="text-apex-accent font-bold">// ${item.id}</span>
+                            <span class="bg-apex-bg px-2 py-0.5 border border-apex-border uppercase">${item.category}</span>
+                        </div>
+
+                        <!-- Product Title -->
+                        <h3 class="text-base font-bold text-white tracking-wide mb-2 group-hover:text-apex-accent transition">${item.title}</h3>
+                        
+                        <div class="inline-block bg-apex-bg border border-apex-border text-apex-warning text-[10px] font-bold px-2 py-0.5 mb-4">
+                            ${item.badge}
+                        </div>
+
+                        <!-- Product Image Frame -->
+                        <div class="w-full h-44 bg-black border border-apex-border overflow-hidden mb-4 relative">
+                            <img src="${item.image}" 
+                                 alt="${item.title}" 
+                                 class="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition duration-300"
+                                 onerror="this.src='https://placehold.co/600x400/141619/00ff66?text=HARDWARE+RIG'">
+                            <div class="absolute inset-0 scanline opacity-30 pointer-events-none"></div>
+                        </div>
+
+                        <!-- Technical Specs Matrix -->
+                        <div class="space-y-1.5 text-xs text-apex-muted mb-6 bg-apex-bg p-3 border border-apex-border">
+                            <div class="flex justify-between">
+                                <span>CPU:</span>
+                                <span class="text-white font-medium truncate max-w-[180px]">${item.cpu}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>RAM:</span>
+                                <span class="text-white font-medium">${item.ram}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>STORAGE:</span>
+                                <span class="text-white font-medium">${item.storage}</span>
+                            </div>
+                            <div class="flex justify-between border-t border-apex-border pt-1 mt-1 text-[10px]">
+                                <span>POWER:</span>
+                                <span class="text-apex-accent font-bold">${item.tdp}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Row -->
+                    <div class="pt-3 border-t border-apex-border flex items-center justify-between gap-2">
+                        <div>
+                            <span class="block text-[9px] text-apex-muted uppercase">UNIT PRICE</span>
+                            <span class="text-lg font-bold text-white">$${item.price.toLocaleString()}</span>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button onclick="openSpecsModal('${item.id}')" 
+                                    class="px-2.5 py-2 border border-apex-border text-apex-muted hover:text-white hover:border-apex-accent text-xs transition">
+                                SPECS
+                            </button>
+                            <button onclick="addToCart('${item.id}')" 
+                                    class="px-3 py-2 bg-apex-accent hover:bg-apex-accentHover text-black font-bold text-xs transition active:scale-95">
+                                + ADD_TO_CART
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // CART MANAGEMENT FUNCTIONS
+        function addToCart(productId) {
+            const existing = shoppingCart.find(i => i.id === productId);
+            if (existing) {
+                existing.quantity += 1;
+            } else {
+                const product = products.find(p => p.id === productId);
+                shoppingCart.push({ ...product, quantity: 1, selectedOS: product.osChoices[0] });
+            }
+            updateCartUI();
+            
+            // Subtle badge bounce animation
+            const badge = document.getElementById("cartBadge");
+            badge.classList.add("scale-125");
+            setTimeout(() => badge.classList.remove("scale-125"), 150);
+        }
+
+        function updateQuantity(productId, delta) {
+            const item = shoppingCart.find(i => i.id === productId);
+            if (item) {
+                item.quantity += delta;
+                if (item.quantity <= 0) {
+                    shoppingCart = shoppingCart.filter(i => i.id !== productId);
+                }
+            }
+            updateCartUI();
+        }
+
+        function changeSelectedOS(productId, osName) {
+            const item = shoppingCart.find(i => i.id === productId);
+            if (item) {
+                item.selectedOS = osName;
+            }
+        }
+
+        function removeFromCart(productId) {
+            shoppingCart = shoppingCart.filter(i => i.id !== productId);
+            updateCartUI();
+        }
+
+        function updateCartUI() {
+            const totalItems = shoppingCart.reduce((sum, item) => sum + item.quantity, 0);
+            const subtotal = shoppingCart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const tax = subtotal * 0.085; // 8.5% tax
+            const total = subtotal + tax;
+
+            document.getElementById("cartBadge").innerText = totalItems;
+
+            const container = document.getElementById("cartItemsContainer");
+            if (shoppingCart.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-16 space-y-3">
+                        <div class="w-12 h-12 border border-apex-border bg-apex-bg text-apex-muted flex items-center justify-center mx-auto">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
+                        </div>
+                        <p class="text-xs text-apex-muted">CART_MANIFEST IS CURRENTLY EMPTY.</p>
+                        <p class="text-[10px] text-apex-border">Select components from catalog to configure your order.</p>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = shoppingCart.map(item => `
+                    <div class="bg-apex-bg border border-apex-border p-3 space-y-2">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h4 class="text-xs font-bold text-white">${item.title}</h4>
+                                <span class="text-[10px] text-apex-accent">${item.id}</span>
+                            </div>
+                            <span class="text-xs font-bold text-white">$${(item.price * item.quantity).toLocaleString()}</span>
+                        </div>
+
+                        <!-- OS Selection -->
+                        <div class="text-[10px]">
+                            <label class="text-apex-muted block mb-1">TARGET OS PRE-INSTALL:</label>
+                            <select onchange="changeSelectedOS('${item.id}', this.value)" class="w-full bg-apex-panel border border-apex-border text-white text-[10px] p-1 focus:outline-none focus:border-apex-accent">
+                                ${item.osChoices.map(os => `<option value="${os}" ${item.selectedOS === os ? 'selected' : ''}>${os}</option>`).join('')}
+                            </select>
+                        </div>
+
+                        <!-- Quantity Adjusters -->
+                        <div class="flex items-center justify-between border-t border-apex-border pt-2 mt-2">
+                            <div class="flex items-center space-x-2 border border-apex-border bg-apex-panel">
+                                <button onclick="updateQuantity('${item.id}', -1)" class="px-2 py-0.5 text-apex-muted hover:text-white font-bold">-</button>
+                                <span class="px-2 text-xs font-bold text-white">${item.quantity}</span>
+                                <button onclick="updateQuantity('${item.id}', 1)" class="px-2 py-0.5 text-apex-muted hover:text-white font-bold">+</button>
+                            </div>
+                            <button onclick="removeFromCart('${item.id}')" class="text-[10px] text-red-400 hover:underline">[REMOVE]</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            document.getElementById("cartSubtotal").innerText = `$${subtotal.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+            document.getElementById("cartTax").innerText = `$${tax.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+            document.getElementById("cartTotal").innerText = `$${total.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+        }
+
+        // CART DRAWER TOGGLE
+        function toggleCartDrawer() {
+            const drawer = document.getElementById("cartDrawer");
+            const overlay = document.getElementById("cartOverlay");
+            const isOpen = !drawer.classList.contains("translate-x-full");
+
+            if (isOpen) {
+                drawer.classList.add("translate-x-full");
+                overlay.classList.add("opacity-0", "pointer-events-none");
+                overlay.classList.remove("opacity-100");
+            } else {
+                drawer.classList.remove("translate-x-full");
+                overlay.classList.remove("opacity-0", "pointer-events-none");
+                overlay.classList.add("opacity-100");
+            }
+        }
+
+        // QUICK SPECS MODAL
+        function openSpecsModal(productId) {
+            const product = products.find(p => p.id === productId);
+            const modal = document.getElementById("specsModal");
+            const content = document.getElementById("specsModalContent");
+
+            content.innerHTML = `
+                <div class="space-y-6">
+                    <div class="border-b border-apex-border pb-3">
+                        <span class="text-apex-accent font-bold">// HARDWARE SPECIFICATION DATA SHEET</span>
+                        <h2 class="text-xl font-bold text-white mt-1">${product.title}</h2>
+                        <span class="text-apex-muted">${product.id} • ${product.badge}</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-black border border-apex-border h-48 overflow-hidden relative">
+                            <img src="${product.image}" alt="${product.title}" class="w-full h-full object-cover">
+                            <div class="absolute inset-0 scanline opacity-30"></div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <div class="p-3 bg-apex-bg border border-apex-border">
+                                <span class="text-apex-muted text-[10px] block">BENCHMARK SCORE</span>
+                                <span class="text-apex-accent font-bold">${product.benchmarkScore}</span>
+                            </div>
+                            <div class="p-3 bg-apex-bg border border-apex-border">
+                                <span class="text-apex-muted text-[10px] block">THERMAL SUBSYSTEM</span>
+                                <span class="text-white font-medium">${product.thermals}</span>
+                            </div>
+                            <div class="p-3 bg-apex-bg border border-apex-border">
+                                <span class="text-apex-muted text-[10px] block">I/O EXPANSION</span>
+                                <span class="text-white font-medium">${product.ioPorts}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <span class="text-apex-accent font-bold block">// SYSTEM OVERVIEW</span>
+                        <p class="text-apex-muted leading-relaxed font-sans text-xs">${product.description}</p>
+                    </div>
+
+                    <div class="pt-4 border-t border-apex-border flex items-center justify-between">
+                        <div>
+                            <span class="text-[10px] text-apex-muted block">CONFIGURED PRICE</span>
+                            <span class="text-xl font-bold text-white">$${product.price.toLocaleString()}</span>
+                        </div>
+                        <button onclick="addToCart('${product.id}'); closeSpecsModal(); toggleCartDrawer();" 
+                                class="px-5 py-2.5 bg-apex-accent hover:bg-apex-accentHover text-black font-bold text-xs transition">
+                            + ADD_RIG_TO_MANIFEST
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            modal.classList.remove("hidden");
+        }
+
+        function closeSpecsModal() {
+            document.getElementById("specsModal").classList.add("hidden");
+        }
+
+        // CHECKOUT SIMULATION
+        function simulateCheckout() {
+            if (shoppingCart.length === 0) {
+                return;
+            }
+
+            const total = document.getElementById("cartTotal").innerText;
+            const itemNames = shoppingCart.map(i => `• ${i.title} (${i.selectedOS})`).join("\n");
+            
+            alert(`[APEX HARDWARE PROCUREMENT INITIATED]\n\nORDER SUMMARY:\n${itemNames}\n\nTOTAL AMOUNT: ${total}\n\nDispatching hardware build request to US-EAST facility...`);
+            
+            shoppingCart = [];
+            updateCartUI();
+            toggleCartDrawer();
+        }
+    </script>
+</body>
+</html>

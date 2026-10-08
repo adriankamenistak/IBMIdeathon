@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Raw annotations · Pinpoint</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  body{overflow:auto}
+  .raw{max-width:1100px;margin:0 auto;padding:28px 24px 64px;display:flex;flex-direction:column;gap:22px}
+  .raw-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .raw-head h1{margin:0;font-size:16px;font-weight:600;letter-spacing:-.01em}
+  .meta{display:flex;gap:14px;flex-wrap:wrap;font:11.5px var(--mono);color:var(--dim)}
+  .meta b{color:var(--mut);font-weight:500}
+  .block{border:1px solid var(--line);border-radius:12px;background:var(--panel);overflow:hidden}
+  .block-head{display:flex;align-items:center;gap:10px;height:42px;padding:0 10px 0 14px;border-bottom:1px solid var(--line)}
+  .block-head h2{margin:0;font-size:12.5px;font-weight:600}
+  .block-head .sub{font:11px var(--mono);color:var(--dim)}
+  pre{margin:0;padding:16px 18px;max-height:62vh;overflow:auto;font:11.5px/1.65 var(--mono);color:#cfcfd6;white-space:pre;tab-size:2}
+  pre.empty-raw{color:var(--dim);font-style:italic}
+  .tok-key{color:#74a5ff}.tok-str{color:#9ad8a0}.tok-num{color:#f5a524}.tok-bool{color:#c89bf5}.tok-null{color:var(--faint)}
+  .nav{display:flex;align-items:center;gap:8px}
+  .live{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--dim)}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-copy" viewBox="0 0 16 16"><rect x="5.25" y="5.25" width="8.5" height="8.5" rx="1.5"/><path d="M10.75 5.25V3.75a1.5 1.5 0 0 0-1.5-1.5h-5.5a1.5 1.5 0 0 0-1.5 1.5v5.5a1.5 1.5 0 0 0 1.5 1.5h1.5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 16 16"><path d="M3.5 8.5l3 3 6-7"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 16 16"><path d="M13.5 8a5.5 5.5 0 1 1-1.7-3.97M13.25 2.5V5.5h-3"/></symbol>
+  <symbol id="i-download" viewBox="0 0 16 16"><path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M3 13.5h10"/></symbol>
+  <symbol id="i-arrow-l" viewBox="0 0 16 16"><path d="M13 8H3M7 4 3 8l4 4"/></symbol>
+</svg>
+
+<div class="raw">
+  <div class="raw-head">
+    <a class="ib" href="index.html" title="Back to inspector" aria-label="Back to inspector"><svg class="i"><use href="#i-arrow-l"/></svg></a>
+    <h1>Raw annotations</h1>
+    <span class="count" id="cnt">0</span>
+    <span class="spacer"></span>
+    <span class="live"><i class="dot ok"></i>auto-updates</span>
+    <button class="btn" id="btnRefresh" type="button"><svg class="i"><use href="#i-refresh"/></svg>Refresh</button>
+  </div>
+  <div class="meta" id="meta"></div>
+
+  <section class="block">
+    <div class="block-head">
+      <h2>annotations.json</h2><span class="sub" id="jsonSize"></span>
+      <span class="spacer"></span>
+      <button class="btn sm" data-dl="json" type="button"><svg class="i"><use href="#i-download"/></svg>.json</button>
+      <button class="btn sm primary" data-copy="json" type="button"><svg class="i"><use href="#i-copy"/></svg><span>Copy JSON</span></button>
+    </div>
+    <pre id="jsonOut"></pre>
+  </section>
+
+  <section class="block">
+    <div class="block-head">
+      <h2>Generated prompt</h2>
+      <div class="seg" id="fmtSeg" role="group" aria-label="Format">
+        <button data-f="cursor" aria-pressed="true">Agent</button><button data-f="chat" aria-pressed="false">Chat</button><button data-f="report" aria-pressed="false">Report</button>
+      </div>
+      <span class="sub" id="promptSize"></span>
+      <span class="spacer"></span>
+      <button class="btn sm" data-dl="md" type="button"><svg class="i"><use href="#i-download"/></svg>.md</button>
+      <button class="btn sm primary" data-copy="prompt" type="button"><svg class="i"><use href="#i-copy"/></svg><span>Copy prompt</span></button>
+    </div>
+    <pre id="promptOut"></pre>
+  </section>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="prompt.js"></script>
+<script>
+(() => {
+'use strict';
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+let data = { annotations: [] }, jsonText = '', promptText = '', fmt = 'cursor';
+
+let tT; const toast = m => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); clearTimeout(tT); tT = setTimeout(() => t.classList.remove('show'), 1800); };
+const bytes = n => n < 1024 ? n + ' B' : (n / 1024).toFixed(1) + ' KB';
+
+// Minimal JSON syntax highlighting — purely cosmetic, the text stays raw/copyable.
+function highlight(s) {
+  return PP.esc(s).replace(
+    /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false)\b|\bnull\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g,
+    m => {
+      let c = 'tok-num';
+      if (/^"/.test(m)) c = /:$/.test(m) ? 'tok-key' : 'tok-str';
+      else if (/true|false/.test(m)) c = 'tok-bool';
+      else if (/null/.test(m)) c = 'tok-null';
+      return `<span class="${c}">${m}</span>`;
+    });
+}
+
+function render() {
+  data = PP.load();
+  const anns = data.annotations;
+  $('#cnt').textContent = anns.length;
+
+  const open = anns.filter(a => !a.resolved).length;
+  $('#meta').innerHTML = [
+    `file <b>${PP.esc(data.file || PP.PAGE_FILE)}</b>`,
+    `page title <b>${PP.esc(data.source?.title || '—')}</b>`,
+    `open <b>${open}</b>`,
+    `resolved <b>${anns.length - open}</b>`,
+    `updated <b>${data.updatedAt ? new Date(data.updatedAt).toLocaleString() : '—'}</b>`,
+    `storage key <b>${PP.STORE_KEY}</b>`
+  ].join('');
+
+  jsonText = JSON.stringify(data, null, 2);
+  const jo = $('#jsonOut');
+  if (anns.length) { jo.classList.remove('empty-raw'); jo.innerHTML = highlight(jsonText); }
+  else { jo.classList.add('empty-raw'); jo.textContent = 'No saved annotations yet — add some in the inspector, then refresh.'; }
+  $('#jsonSize').textContent = bytes(jsonText.length);
+
+  promptText = PP.buildPrompt(anns, { target: fmt, resolved: true, wrap: false });
+  const po = $('#promptOut');
+  po.classList.toggle('empty-raw', !promptText);
+  po.textContent = promptText || 'Nothing to generate yet.';
+  $('#promptSize').textContent = promptText ? `${promptText.length.toLocaleString()} chars · ~${Math.ceil(promptText.length / 4).toLocaleString()} tokens` : '';
+}
+
+async function copy(text, btn, label) {
+  if (!text) return toast('Nothing to copy');
+  try { await navigator.clipboard.writeText(text); }
+  catch { const t = document.createElement('textarea'); t.value = text; document.body.append(t); t.select(); document.execCommand('copy'); t.remove(); }
+  const span = btn.querySelector('span'), use = btn.querySelector('use');
+  span.textContent = 'Copied'; use.setAttribute('href', '#i-check');
+  clearTimeout(btn._t); btn._t = setTimeout(() => { span.textContent = label; use.setAttribute('href', '#i-copy'); }, 1600);
+}
+function download(name, text, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type }));
+  a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+$('#btnRefresh').addEventListener('click', () => { render(); toast('Reloaded from storage'); });
+$('[data-copy=json]').addEventListener('click', e => copy(jsonText, e.currentTarget, 'Copy JSON'));
+$('[data-copy=prompt]').addEventListener('click', e => copy(promptText, e.currentTarget, 'Copy prompt'));
+$('[data-dl=json]').addEventListener('click', () => download('pinpoint-annotations.json', jsonText, 'application/json'));
+$('[data-dl=md]').addEventListener('click', () => download('pinpoint-feedback.md', promptText, 'text/markdown'));
+$('#fmtSeg').addEventListener('click', e => {
+  const b = e.target.closest('[data-f]'); if (!b) return;
+  fmt = b.dataset.f; $$('#fmtSeg button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); render();
+});
+// live-update when the inspector saves in another tab
+window.addEventListener('storage', e => { if (e.key === PP.STORE_KEY) render(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) render(); });
+render();
+})();
+</script>
+</body>
+</html>
