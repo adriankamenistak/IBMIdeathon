@@ -10,11 +10,11 @@ python3 -m http.server 8000   # or just open index.html in Chrome/Edge
 
 ## Demo flow (≈60 s)
 
-1. Press **I** (or the *Inspect & Annotate* toggle) and hover the demo page — DevTools-style box model, selector and size badge.
-2. Click the grey hero subtitle → pin **#1** drops and the popover opens. Type a comment, pick **Bug**, set the text color to a darker slate.
-3. Click the CTA button row → switch nudge mode to **Margin** and press **←** a few times to fix the off-center row.
-4. Click the headline → **Edit text inline** and change the copy.
-5. Press **B** to flip Before / After, then **E** → *Export AI Prompt* → **Copy to Clipboard** and paste into Cursor.
+1. Press **I** (or **Inspect** in the toolbar) and hover the demo page — DevTools-style box model, selector and size badge.
+2. Click the grey hero subtitle → pin **#1** drops and the comment popover opens. Type a comment, set the type to **Bug**, and change the text colour to `64748B`.
+3. Click the CTA button row → switch Position to **Margin** and press **←** a few times to fix the off-center row.
+4. Click the headline → Text **Edit** and change the copy.
+5. Press **B** to compare with the original, then **E** → *Export prompt* → **Copy to clipboard** and paste into Cursor.
 
 ## Features
 
@@ -39,4 +39,4 @@ Page scripts are disabled by default; enable **Run page scripts** for JS-rendere
 
 ## Keyboard
 
-`I` inspect · `E` export · `B` before/after · `\` sidebar · `1/2/3` viewport · arrows nudge (Shift = 10px) · `Ctrl/⌘+Enter` save · `Esc` close
+`I` inspect · `E` export · `B` compare · `\` sidebar · `1/2/3` viewport · arrows nudge (Shift = 10px) · `Ctrl/⌘+Enter` save · `Esc` close
